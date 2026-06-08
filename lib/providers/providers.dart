@@ -143,8 +143,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         id: track.path, title: track.title, artist: track.artist, album: track.album,
       )]);
       await _player.setAudioSource(AudioSource.uri(Uri.file(track.path)));
-      // mpv auto-plays from loadfile; pause immediately so the app opens silent.
-      await _player.pause();
 
       if (saved.positionMs > 0) {
         await _player.seek(Duration(milliseconds: saved.positionMs));

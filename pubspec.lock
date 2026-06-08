@@ -443,10 +443,9 @@ packages:
   just_audio_mpv:
     dependency: "direct main"
     description:
-      name: just_audio_mpv
-      sha256: d6e4e9fd20bfb9d2fd5e3dcd7906c90ed07f83d1d2f44f31204160821ab62fed
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/just_audio_mpv"
+      relative: true
+    source: path
     version: "0.1.7"
   just_audio_platform_interface:
     dependency: transitive

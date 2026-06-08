@@ -47,6 +47,8 @@ dev_dependencies:
 dependency_overrides:
   mpv_dart:
     path: packages/mpv_dart
+  just_audio_mpv:
+    path: packages/just_audio_mpv
 
 flutter:
   uses-material-design: true
