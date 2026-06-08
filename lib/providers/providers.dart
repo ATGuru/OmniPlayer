@@ -143,6 +143,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         id: track.path, title: track.title, artist: track.artist, album: track.album,
       )]);
       await _player.setAudioSource(AudioSource.uri(Uri.file(track.path)));
+      // mpv auto-plays from loadfile; pause immediately so the app opens silent.
+      await _player.pause();
+
+      if (saved.positionMs > 0) {
+        await _player.seek(Duration(milliseconds: saved.positionMs));
+      }
 
       final idx = valid.indexWhere((t) => t.id == track.id);
       state = state.copyWith(
@@ -151,11 +157,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         currentIndex: idx < 0 ? 0 : idx,
         error: null,
       );
-
-      if (saved.positionMs > 0) {
-        await _player.seek(Duration(milliseconds: saved.positionMs));
-      }
-      // Restored paused — user presses play to resume
     } catch (e) {
       debugPrint('[PlayerNotifier] restoreResumeState error: $e');
     }
