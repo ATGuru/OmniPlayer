@@ -59,10 +59,14 @@ class AppDatabase extends _$AppDatabase {
   // ── Track queries ──────────────────────────────
 
   Future<List<Track>> getAllTracks() =>
-      (select(tracks)..orderBy([(t) => OrderingTerm(expression: t.title)])).get();
+      (select(tracks)
+        ..where((t) => t.duration.isBiggerOrEqualValue(60000))
+        ..orderBy([(t) => OrderingTerm(expression: t.title)])).get();
 
   Stream<List<Track>> watchAllTracks() =>
-      (select(tracks)..orderBy([(t) => OrderingTerm(expression: t.title)])).watch();
+      (select(tracks)
+        ..where((t) => t.duration.isBiggerOrEqualValue(60000))
+        ..orderBy([(t) => OrderingTerm(expression: t.title)])).watch();
 
   Future<int> insertTrack(TracksCompanion entry) =>
       into(tracks).insertOnConflictUpdate(entry);
