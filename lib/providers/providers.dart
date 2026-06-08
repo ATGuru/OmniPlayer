@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/storage/resume_storage.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 import '../core/database/app_database.dart';
@@ -103,10 +104,17 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   final OmniXAudioHandler? _handler;
   final AppDatabase _db;
   final bool _isDesktop;
+  int _positionTick = 0;
 
   PlayerNotifier(this._player, this._handler, this._db, this._isDesktop)
       : super(const PlayerState()) {
-    _player.positionStream.listen((p) => state = state.copyWith(position: p));
+    _player.positionStream.listen((p) {
+      state = state.copyWith(position: p);
+      // Save position every 10 ticks (~10 s) while playing
+      if (state.currentTrack != null && ++_positionTick % 10 == 0) {
+        ResumeStorage.save(trackId: state.currentTrack!.id, positionMs: p.inMilliseconds);
+      }
+    });
     _player.durationStream.listen((d) { if (d != null) state = state.copyWith(duration: d); });
     _player.playingStream.listen((p) => state = state.copyWith(isPlaying: p));
     _player.processingStateStream.listen((s) {
@@ -114,6 +122,43 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       state = state.copyWith(isLoading: loading);
       if (s == ProcessingState.completed) skipNext();
     });
+  }
+
+  Future<void> restoreResumeState() async {
+    try {
+      final saved = await ResumeStorage.load();
+      if (saved == null) return;
+
+      final track = await _db.getTrackById(saved.trackId);
+      if (track == null || !await File(track.path).exists()) return;
+
+      final allTracks = await _db.getAllTracks();
+      final valid = <Track>[];
+      for (final t in allTracks) {
+        if (await File(t.path).exists()) valid.add(t);
+      }
+      if (valid.isEmpty) return;
+
+      await _handler?.updateQueue([MediaItem(
+        id: track.path, title: track.title, artist: track.artist, album: track.album,
+      )]);
+      await _player.setAudioSource(AudioSource.uri(Uri.file(track.path)));
+
+      final idx = valid.indexWhere((t) => t.id == track.id);
+      state = state.copyWith(
+        currentTrack: track,
+        queue: valid,
+        currentIndex: idx < 0 ? 0 : idx,
+        error: null,
+      );
+
+      if (saved.positionMs > 0) {
+        await _player.seek(Duration(milliseconds: saved.positionMs));
+      }
+      // Restored paused — user presses play to resume
+    } catch (e) {
+      debugPrint('[PlayerNotifier] restoreResumeState error: $e');
+    }
   }
 
   // Loads one track as a plain UriAudioSource.
@@ -128,6 +173,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     await _player.setAudioSource(AudioSource.uri(Uri.file(track.path)));
     await _player.play();
     await _db.incrementPlayCount(track.id);
+    await ResumeStorage.save(trackId: track.id, positionMs: 0);
   }
 
   Future<void> playTrack(Track track, List<Track> queue) async {
@@ -249,7 +295,9 @@ final playerProvider = StateNotifierProvider<PlayerNotifier, PlayerState>((ref) 
   if (isDesktop) {
     final player = AudioPlayer();
     ref.onDispose(() => player.dispose());
-    return PlayerNotifier(player, null, db, true);
+    final notifier = PlayerNotifier(player, null, db, true);
+    Future.microtask(() => notifier.restoreResumeState());
+    return notifier;
   }
 
   // On mobile, share the handler's AudioPlayer so the UI and the
@@ -257,5 +305,7 @@ final playerProvider = StateNotifierProvider<PlayerNotifier, PlayerState>((ref) 
   // Previously a second AudioPlayer was created here, which caused the
   // notification controls and the in-app controls to drive different players.
   final handler = ref.watch(audioHandlerProvider) as OmniXAudioHandler;
-  return PlayerNotifier(handler.player, handler, db, false);
+  final notifier = PlayerNotifier(handler.player, handler, db, false);
+  Future.microtask(() => notifier.restoreResumeState());
+  return notifier;
 });

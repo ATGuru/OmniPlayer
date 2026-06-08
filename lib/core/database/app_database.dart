@@ -86,6 +86,9 @@ class AppDatabase extends _$AppDatabase {
     'UPDATE tracks SET is_favorite = NOT is_favorite WHERE id = ?', [trackId],
   );
 
+  Future<Track?> getTrackById(int id) =>
+      (select(tracks)..where((t) => t.id.equals(id))).getSingleOrNull();
+
   Stream<List<Track>> watchFavorites() =>
       (select(tracks)..where((t) => t.isFavorite.equals(true))).watch();
 
