@@ -139,7 +139,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
       final sources = ConcatenatingAudioSource(
         children: validTracks.map((t) =>
-          AudioSource.uri(Uri(scheme: 'file', path: t.path))
+          AudioSource.uri(Uri.file(t.path))
         ).toList(),
       );
 

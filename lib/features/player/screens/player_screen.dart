@@ -1,8 +1,3 @@
-// ═══════════════════════════════════════════════
-// lib/features/player/screens/player_screen.dart
-// Main player screen — full holographic UI
-// ═══════════════════════════════════════════════
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
@@ -12,56 +7,53 @@ import '../widgets/holo_panel.dart';
 import '../widgets/spectrum_ring.dart';
 import '../widgets/waveform_bar.dart';
 import '../widgets/control_buttons.dart';
+import '../../library/screens/library_screen.dart';
 
-class PlayerScreen extends ConsumerWidget {
+class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final player = ref.watch(playerProvider);
+  ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
+}
+
+class _PlayerScreenState extends ConsumerState<PlayerScreen> {
+  bool _libraryOpen = false;
+
+  void _toggleLibrary() => setState(() => _libraryOpen = !_libraryOpen);
+  void _closeLibrary()  => setState(() => _libraryOpen = false);
+
+  @override
+  Widget build(BuildContext context) {
+    final player   = ref.watch(playerProvider);
     final notifier = ref.read(playerProvider.notifier);
-    final track = player.currentTrack;
+    final track    = player.currentTrack;
+    final panelW   = MediaQuery.of(context).size.width * 0.85;
 
     return Scaffold(
       backgroundColor: OmniXColors.voidBlack,
       body: Stack(
         children: [
-          // Ambient background orbs
+          // ── Ambient background ──────────────────
           const _AmbientBackground(),
 
+          // ── Player content ──────────────────────
           SafeArea(
             child: SingleChildScrollView(
               padding: OmniXSpacing.screenPadding,
               child: Column(
                 children: [
                   const SizedBox(height: 8),
-
-                  // ── Header bar ──────────────────────
-                  _HeaderBar(),
+                  _HeaderBar(onLibraryToggle: _toggleLibrary),
                   const SizedBox(height: 20),
-
-                  // ── Main panel ──────────────────────
                   HoloPanel(
                     child: Column(
                       children: [
-                        // Spectrum ring / album art
-                        Center(
-                          child: SpectrumRing(
-                            isPlaying: player.isPlaying,
-                            size: 200,
-                          ),
-                        ),
+                        Center(child: SpectrumRing(isPlaying: player.isPlaying, size: 200)),
                         const SizedBox(height: 24),
-
-                        // Track info
                         _TrackInfo(track: track),
                         const SizedBox(height: 16),
-
-                        // Waveform
                         WaveformBar(isPlaying: player.isPlaying),
                         const SizedBox(height: 16),
-
-                        // Progress bar
                         _ProgressBar(
                           progress: player.progressFraction,
                           position: player.position,
@@ -69,24 +61,63 @@ class PlayerScreen extends ConsumerWidget {
                           onSeek: notifier.seek,
                         ),
                         const SizedBox(height: 20),
-
-                        // Controls
                         const ControlButtons(),
                         const SizedBox(height: 20),
-
-                        // Volume
                         _VolumeRow(),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 12),
-
-                  // ── Status bar ──────────────────────
                   _StatusBar(isPlaying: player.isPlaying, trackCount: player.queue.length),
+                  if (player.error != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Text(
+                        player.error!,
+                        textAlign: TextAlign.center,
+                        style: OmniXTextStyles.orbitronMono.copyWith(
+                          color: OmniXColors.errorRed,
+                          fontSize: 8,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                 ],
               ),
+            ),
+          ),
+
+          // ── Scrim — tap outside to close library ─
+          if (_libraryOpen)
+            GestureDetector(
+              onTap: _closeLibrary,
+              child: Container(color: Colors.black.withOpacity(0.45)),
+            ),
+
+          // ── Library panel — slides in from right ─
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeInOut,
+            top: 0,
+            bottom: 0,
+            right: _libraryOpen ? 0 : -panelW,
+            width: panelW,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: OmniXColors.cyan.withOpacity(0.2), width: 1),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: OmniXColors.cyan.withOpacity(0.06),
+                    blurRadius: 32,
+                    offset: const Offset(-8, 0),
+                  ),
+                ],
+              ),
+              child: LibraryContent(onClose: _closeLibrary),
             ),
           ),
         ],
@@ -98,12 +129,22 @@ class PlayerScreen extends ConsumerWidget {
 // ── Header ─────────────────────────────────────
 
 class _HeaderBar extends StatelessWidget {
+  final VoidCallback onLibraryToggle;
+  const _HeaderBar({required this.onLibraryToggle});
+
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('OMNIX AUDIO', style: OmniXTextStyles.orbitronLabel.copyWith(fontSize: 11, letterSpacing: 4, color: OmniXColors.cyan.withOpacity(0.7))),
+        Text(
+          'OMNIX AUDIO',
+          style: OmniXTextStyles.orbitronLabel.copyWith(
+            fontSize: 11,
+            letterSpacing: 4,
+            color: OmniXColors.cyan.withOpacity(0.7),
+          ),
+        ),
         Row(children: [
           _dot(OmniXColors.cyan),
           const SizedBox(width: 5),
@@ -111,15 +152,29 @@ class _HeaderBar extends StatelessWidget {
           const SizedBox(width: 5),
           _dot(OmniXColors.magenta),
         ]),
-        Text('v1.0.0', style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.magenta.withOpacity(0.7))),
+        GestureDetector(
+          onTap: onLibraryToggle,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Icon(
+              Icons.library_music_outlined,
+              color: OmniXColors.cyan.withOpacity(0.7),
+              size: 20,
+            ),
+          ),
+        ),
       ],
     );
   }
 
   Widget _dot(Color c) => Container(
     width: 7, height: 7,
-    decoration: BoxDecoration(shape: BoxShape.circle, color: c,
-      boxShadow: [BoxShadow(color: c.withOpacity(0.8), blurRadius: 6)]),
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: c,
+      boxShadow: [BoxShadow(color: c.withOpacity(0.8), blurRadius: 6)],
+    ),
   );
 }
 
@@ -305,7 +360,9 @@ class _StatusBar extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isPlaying ? OmniXColors.activeGreen : Colors.white.withOpacity(0.2),
-              boxShadow: isPlaying ? [BoxShadow(color: OmniXColors.activeGreen.withOpacity(0.8), blurRadius: 8)] : [],
+              boxShadow: isPlaying
+                  ? [BoxShadow(color: OmniXColors.activeGreen.withOpacity(0.8), blurRadius: 8)]
+                  : [],
             ),
           ),
           const SizedBox(width: 6),

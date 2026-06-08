@@ -10,6 +10,82 @@ import '../../../core/database/app_database.dart';
 import '../../../providers/providers.dart';
 import '../widgets/track_tile.dart';
 
+/// Embeddable library content — no Scaffold, works inside a side panel.
+class LibraryContent extends ConsumerWidget {
+  /// Called after a track is tapped (e.g. close the enclosing panel).
+  final VoidCallback? onClose;
+  const LibraryContent({super.key, this.onClose});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tracksAsync  = ref.watch(tracksProvider);
+    final scanState    = ref.watch(scanProvider);
+    final scanNotifier = ref.read(scanProvider.notifier);
+
+    return Container(
+      color: OmniXColors.deepVoid,
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
+              child: Row(
+                children: [
+                  Text('LIBRARY', style: OmniXTextStyles.orbitronLabel.copyWith(fontSize: 13, letterSpacing: 4)),
+                  const Spacer(),
+                  tracksAsync.when(
+                    data: (t) => Text('${t.length} TRACKS', style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.violet.withOpacity(0.5))),
+                    loading: () => const SizedBox(),
+                    error: (_, __) => const SizedBox(),
+                  ),
+                  if (onClose != null) ...[
+                    const SizedBox(width: 12),
+                    GestureDetector(
+                      onTap: onClose,
+                      child: Icon(Icons.close, color: OmniXColors.cyan.withOpacity(0.5), size: 20),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Scan button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: _ScanButton(
+                isScanning: scanState.isScanning,
+                scanned: scanState.scanned,
+                total: scanState.total,
+                onScan: () => scanNotifier.scan(),
+              ),
+            ),
+            // Track list
+            Expanded(
+              child: tracksAsync.when(
+                data: (tracks) {
+                  if (tracks.isEmpty) return _EmptyState(onScan: () => scanNotifier.scan());
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    itemCount: tracks.length,
+                    itemBuilder: (ctx, i) => TrackTile(
+                      track: tracks[i],
+                      index: i,
+                      allTracks: tracks,
+                      onSelected: onClose,
+                    ),
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator(color: OmniXColors.cyan)),
+                error: (e, _) => Center(child: Text('Error: $e', style: OmniXTextStyles.rajdhaniBody.copyWith(color: OmniXColors.errorRed))),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
 

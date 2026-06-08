@@ -13,15 +13,18 @@ class TrackTile extends ConsumerWidget {
   final Track track;
   final int index;
   final List<Track> allTracks;
+  final VoidCallback? onSelected;
 
   const TrackTile({
     super.key,
     required this.track,
     required this.index,
     required this.allTracks,
+    this.onSelected,
   });
 
   String _fmtDuration(int ms) {
+    if (ms <= 0) return '—';
     final d = Duration(milliseconds: ms);
     final m = d.inMinutes;
     final s = d.inSeconds % 60;
@@ -35,7 +38,10 @@ class TrackTile extends ConsumerWidget {
     final isActive = player.currentTrack?.id == track.id;
 
     return GestureDetector(
-      onTap: () => notifier.playTrack(track, allTracks),
+      onTap: () {
+        notifier.playTrack(track, allTracks);
+        onSelected?.call();
+      },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
