@@ -42,7 +42,8 @@ class OmniXAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler 
   /// Update notification queue metadata without touching the audio source.
   /// Call this whenever PlayerNotifier rebuilds the playback queue so that
   /// lock-screen / notification controls show the correct track info.
-  void updateQueue(List<MediaItem> items) => queue.add(items);
+  @override
+  Future<void> updateQueue(List<MediaItem> items) async => queue.add(items);
 
   /// Load a list of tracks into the player queue
   Future<void> loadQueue(List<MediaItem> items, {int initialIndex = 0}) async {

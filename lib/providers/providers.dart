@@ -145,7 +145,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
       // Sync audio_service notification queue so lock-screen / notification
       // controls display the correct track metadata on mobile.
-      _handler?.updateQueue(validTracks.map((t) => MediaItem(
+      await _handler?.updateQueue(validTracks.map((t) => MediaItem(
         id: t.path,
         title: t.title,
         artist: t.artist,
