@@ -44,6 +44,10 @@ dev_dependencies:
   drift_dev: ^2.14.1
   build_runner: ^2.4.7
 
+dependency_overrides:
+  mpv_dart:
+    path: packages/mpv_dart
+
 flutter:
   uses-material-design: true
   assets:

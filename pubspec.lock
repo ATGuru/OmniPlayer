@@ -537,12 +537,11 @@ packages:
     source: hosted
     version: "2.0.0"
   mpv_dart:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: mpv_dart
-      sha256: a33bd9a68439b496b7a5f36fecd3aa3cf6cbf0176ae15b9b60b12ae96e58f5a4
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/mpv_dart"
+      relative: true
+    source: path
     version: "0.0.1"
   objective_c:
     dependency: transitive

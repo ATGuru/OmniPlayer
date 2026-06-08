@@ -24,6 +24,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(playerProvider.select((s) => s.error), (prev, next) {
+      if (next != null && next != prev) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(next, style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 13)),
+          backgroundColor: OmniXColors.errorRed.withOpacity(0.92),
+          duration: const Duration(seconds: 6),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    });
+
     final player   = ref.watch(playerProvider);
     final notifier = ref.read(playerProvider.notifier);
     final track    = player.currentTrack;
@@ -48,7 +59,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   HoloPanel(
                     child: Column(
                       children: [
-                        Center(child: SpectrumRing(isPlaying: player.isPlaying, size: 200)),
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SpectrumRing(isPlaying: player.isPlaying, size: 200),
+                            if (player.isLoading)
+                              const SizedBox(
+                                width: 36, height: 36,
+                                child: CircularProgressIndicator(color: OmniXColors.cyan, strokeWidth: 2),
+                              ),
+                          ],
+                        ),
                         const SizedBox(height: 24),
                         _TrackInfo(track: track),
                         const SizedBox(height: 16),

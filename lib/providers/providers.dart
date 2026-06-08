@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
@@ -57,6 +58,7 @@ final scanProvider = StateNotifierProvider<ScanNotifier, ScanState>((ref) {
 class PlayerState {
   final Track? currentTrack;
   final bool isPlaying;
+  final bool isLoading;
   final Duration position;
   final Duration duration;
   final List<Track> queue;
@@ -67,17 +69,19 @@ class PlayerState {
   final String? error;
 
   const PlayerState({
-    this.currentTrack, this.isPlaying=false, this.position=Duration.zero,
-    this.duration=Duration.zero, this.queue=const [], this.currentIndex=0,
-    this.shuffle=false, this.repeatMode=AudioServiceRepeatMode.none,
-    this.volume=1.0, this.error,
+    this.currentTrack, this.isPlaying=false, this.isLoading=false,
+    this.position=Duration.zero, this.duration=Duration.zero,
+    this.queue=const [], this.currentIndex=0, this.shuffle=false,
+    this.repeatMode=AudioServiceRepeatMode.none, this.volume=1.0, this.error,
   });
 
-  PlayerState copyWith({Track? currentTrack, bool? isPlaying, Duration? position,
-    Duration? duration, List<Track>? queue, int? currentIndex, bool? shuffle,
-    AudioServiceRepeatMode? repeatMode, double? volume, String? error}) => PlayerState(
+  PlayerState copyWith({Track? currentTrack, bool? isPlaying, bool? isLoading,
+    Duration? position, Duration? duration, List<Track>? queue, int? currentIndex,
+    bool? shuffle, AudioServiceRepeatMode? repeatMode, double? volume,
+    String? error}) => PlayerState(
     currentTrack: currentTrack ?? this.currentTrack,
     isPlaying: isPlaying ?? this.isPlaying,
+    isLoading: isLoading ?? this.isLoading,
     position: position ?? this.position,
     duration: duration ?? this.duration,
     queue: queue ?? this.queue,
@@ -105,65 +109,55 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _player.positionStream.listen((p) => state = state.copyWith(position: p));
     _player.durationStream.listen((d) { if (d != null) state = state.copyWith(duration: d); });
     _player.playingStream.listen((p) => state = state.copyWith(isPlaying: p));
-    _player.currentIndexStream.listen((i) {
-      if (i != null && i < state.queue.length) {
-        state = state.copyWith(currentTrack: state.queue[i], currentIndex: i);
-      }
-    });
     _player.processingStateStream.listen((s) {
+      final loading = s == ProcessingState.loading || s == ProcessingState.buffering;
+      state = state.copyWith(isLoading: loading);
       if (s == ProcessingState.completed) skipNext();
     });
   }
 
+  // Loads one track as a plain UriAudioSource.
+  // just_audio_mpv's ConcatenatingAudioSource path is broken on Linux —
+  // it sends loadfile with empty options and playlist-play-index as a string,
+  // both of which mpv rejects with "invalid parameter". Loading a single URI
+  // avoids both bugs. The queue is managed in Dart state instead.
+  Future<void> _loadSingle(Track track) async {
+    await _handler?.updateQueue([MediaItem(
+      id: track.path, title: track.title, artist: track.artist, album: track.album,
+    )]);
+    await _player.setAudioSource(AudioSource.uri(Uri.file(track.path)));
+    await _player.play();
+    await _db.incrementPlayCount(track.id);
+  }
+
   Future<void> playTrack(Track track, List<Track> queue) async {
     try {
-      final index = queue.indexWhere((t) => t.id == track.id);
-      final safeIndex = index < 0 ? 0 : index;
-
-      // Build sources — skip any file that doesn't exist
-      final validPairs = <MapEntry<int, Track>>[];
-      for (int i = 0; i < queue.length; i++) {
-        final f = File(queue[i].path);
-        if (await f.exists()) validPairs.add(MapEntry(i, queue[i]));
+      // Filter to files that actually exist on disk
+      final valid = <Track>[];
+      for (final t in queue) {
+        if (await File(t.path).exists()) valid.add(t);
       }
 
-      if (validPairs.isEmpty) {
+      if (valid.isEmpty) {
         state = state.copyWith(error: 'No valid files found');
         return;
       }
 
-      // Find new index of selected track in filtered list
-      final newIndex = validPairs.indexWhere((e) => e.value.id == track.id);
-      final safeNewIndex = newIndex < 0 ? 0 : newIndex;
-      final validTracks = validPairs.map((e) => e.value).toList();
+      final idx = valid.indexWhere((t) => t.id == track.id);
+      final safeIdx = idx < 0 ? 0 : idx;
+      final playTrack = valid[safeIdx];
 
-      final sources = ConcatenatingAudioSource(
-        children: validTracks.map((t) =>
-          AudioSource.uri(Uri.file(t.path))
-        ).toList(),
-      );
-
-      // Sync audio_service notification queue so lock-screen / notification
-      // controls display the correct track metadata on mobile.
-      await _handler?.updateQueue(validTracks.map((t) => MediaItem(
-        id: t.path,
-        title: t.title,
-        artist: t.artist,
-        album: t.album,
-      )).toList());
-
-      await _player.setAudioSource(sources, initialIndex: safeNewIndex);
-      await _player.play();
-      await _db.incrementPlayCount(track.id);
+      await _loadSingle(playTrack);
 
       state = state.copyWith(
-        currentTrack: track,
-        queue: validTracks,
-        currentIndex: safeNewIndex,
+        currentTrack: playTrack,
+        queue: valid,
+        currentIndex: safeIdx,
         error: null,
       );
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
+    } catch (e, st) {
+      debugPrint('[PlayerNotifier] playTrack error: $e\n$st');
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -175,7 +169,21 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Future<void> skipNext() async {
     try {
-      if (_player.hasNext) await _player.seekToNext();
+      final q = state.queue;
+      if (q.isEmpty) return;
+      int next;
+      if (state.repeatMode == AudioServiceRepeatMode.one) {
+        next = state.currentIndex;
+      } else {
+        next = state.currentIndex + 1;
+        if (next >= q.length) {
+          if (state.repeatMode == AudioServiceRepeatMode.all) next = 0;
+          else return;
+        }
+      }
+      final track = q[next];
+      await _loadSingle(track);
+      state = state.copyWith(currentTrack: track, currentIndex: next, error: null);
     } catch (_) {}
   }
 
@@ -183,9 +191,14 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     try {
       if (_player.position.inSeconds > 3) {
         await _player.seek(Duration.zero);
-      } else if (_player.hasPrevious) {
-        await _player.seekToPrevious();
+        return;
       }
+      final q = state.queue;
+      if (q.isEmpty) return;
+      final prev = (state.currentIndex - 1).clamp(0, q.length - 1);
+      final track = q[prev];
+      await _loadSingle(track);
+      state = state.copyWith(currentTrack: track, currentIndex: prev, error: null);
     } catch (_) {}
   }
 
