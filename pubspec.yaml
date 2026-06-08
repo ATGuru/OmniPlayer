@@ -1,0 +1,69 @@
+name: omnix_audio
+description: OmniX Audio — Holographic Cyberpunk MP3 Player by AllTechGuru
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Audio engine
+  just_audio: ^0.9.36
+  just_audio_mpv: ^0.1.0
+  audio_service: ^0.18.12
+  audio_session: ^0.1.18
+
+  # Device media scanning
+  on_audio_query: ^2.9.0
+
+  # Local database (you already know Drift)
+  drift: ^2.14.1
+  sqlite3_flutter_libs: ^0.5.18
+  path_provider: ^2.1.1
+  path: ^1.8.3
+
+  # State management
+  flutter_riverpod: ^2.4.9
+
+  # UI / animations
+  google_fonts: ^6.1.0
+
+  # Permissions
+  permission_handler: ^11.1.0
+
+  # Utils
+  rxdart: ^0.27.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  drift_dev: ^2.14.1
+  build_runner: ^2.4.7
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+  fonts:
+    - family: Orbitron
+      fonts:
+        - asset: assets/fonts/Orbitron-VariableFont_wght.ttf
+          weight: 400
+        - asset: assets/fonts/Orbitron-VariableFont_wght.ttf
+          weight: 700
+        - asset: assets/fonts/Orbitron-VariableFont_wght.ttf
+          weight: 900
+    - family: Rajdhani
+      fonts:
+        - asset: assets/fonts/Rajdhani-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Rajdhani-Medium.ttf
+          weight: 400
+        - asset: assets/fonts/Rajdhani-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Rajdhani-Bold.ttf
+          weight: 700
