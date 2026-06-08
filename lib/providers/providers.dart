@@ -166,12 +166,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   // it sends loadfile with empty options and playlist-play-index as a string,
   // both of which mpv rejects with "invalid parameter". Loading a single URI
   // avoids both bugs. The queue is managed in Dart state instead.
+  // Loads a track without starting playback. Caller decides when/how to play.
   Future<void> _loadSingle(Track track) async {
     await _handler?.updateQueue([MediaItem(
       id: track.path, title: track.title, artist: track.artist, album: track.album,
     )]);
     await _player.setAudioSource(AudioSource.uri(Uri.file(track.path)));
-    await _player.play();
     await _db.incrementPlayCount(track.id);
     await ResumeStorage.save(trackId: track.id, positionMs: 0);
   }
@@ -194,6 +194,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       final playTrack = valid[safeIdx];
 
       await _loadSingle(playTrack);
+      await _player.play();
 
       state = state.copyWith(
         currentTrack: playTrack,
@@ -229,6 +230,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       }
       final track = q[next];
       await _loadSingle(track);
+      // mpv/PipeWire can get into a "playing but silent" state when transitioning
+      // between tracks. A pause→play cycle forces the audio pipeline to restart.
+      await _player.pause();
+      await _player.play();
       state = state.copyWith(currentTrack: track, currentIndex: next, error: null);
     } catch (_) {}
   }
@@ -244,6 +249,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       final prev = (state.currentIndex - 1).clamp(0, q.length - 1);
       final track = q[prev];
       await _loadSingle(track);
+      await _player.pause();
+      await _player.play();
       state = state.copyWith(currentTrack: track, currentIndex: prev, error: null);
     } catch (_) {}
   }
