@@ -58,14 +58,24 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Track queries ──────────────────────────────
 
+  // Returns the MIN(id) per (title, duration) group — used to deduplicate.
+  _dedupeSubquery() => selectOnly(tracks)
+    ..addColumns([tracks.id.min()])
+    ..where(tracks.duration.isBiggerOrEqualValue(60000))
+    ..groupBy([tracks.title, tracks.duration]);
+
   Future<List<Track>> getAllTracks() =>
       (select(tracks)
-        ..where((t) => t.duration.isBiggerOrEqualValue(60000))
+        ..where((t) =>
+            t.duration.isBiggerOrEqualValue(60000) &
+            t.id.isInQuery(_dedupeSubquery()))
         ..orderBy([(t) => OrderingTerm(expression: t.title)])).get();
 
   Stream<List<Track>> watchAllTracks() =>
       (select(tracks)
-        ..where((t) => t.duration.isBiggerOrEqualValue(60000))
+        ..where((t) =>
+            t.duration.isBiggerOrEqualValue(60000) &
+            t.id.isInQuery(_dedupeSubquery()))
         ..orderBy([(t) => OrderingTerm(expression: t.title)])).watch();
 
   Future<int> insertTrack(TracksCompanion entry) =>
