@@ -105,6 +105,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   final AppDatabase _db;
   final bool _isDesktop;
   int _positionTick = 0;
+  int _pendingSeekMs = 0; // set by restoreResumeState, consumed on first play
 
   PlayerNotifier(this._player, this._handler, this._db, this._isDesktop)
       : super(const PlayerState()) {
@@ -139,20 +140,16 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       }
       if (valid.isEmpty) return;
 
-      await _handler?.updateQueue([MediaItem(
-        id: track.path, title: track.title, artist: track.artist, album: track.album,
-      )]);
-      await _player.setAudioSource(AudioSource.uri(Uri.file(track.path)));
-
-      if (saved.positionMs > 0) {
-        await _player.seek(Duration(milliseconds: saved.positionMs));
-      }
+      // Don't touch mpv at all — just populate UI state so the track info
+      // and saved position are visible. Audio loads on first press of play.
+      _pendingSeekMs = saved.positionMs;
 
       final idx = valid.indexWhere((t) => t.id == track.id);
       state = state.copyWith(
         currentTrack: track,
         queue: valid,
         currentIndex: idx < 0 ? 0 : idx,
+        position: Duration(milliseconds: saved.positionMs),
         error: null,
       );
     } catch (e) {
@@ -192,6 +189,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       final safeIdx = idx < 0 ? 0 : idx;
       final playTrack = valid[safeIdx];
 
+      _pendingSeekMs = 0;
       await _loadSingle(playTrack);
       await _player.play();
 
@@ -209,6 +207,16 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Future<void> togglePlayPause() async {
     try {
+      // First play after restore — audio hasn't been loaded yet.
+      if (_player.processingState == ProcessingState.idle && state.currentTrack != null) {
+        await _player.setAudioSource(AudioSource.uri(Uri.file(state.currentTrack!.path)));
+        if (_pendingSeekMs > 0) {
+          await _player.seek(Duration(milliseconds: _pendingSeekMs));
+          _pendingSeekMs = 0;
+        }
+        await _player.play();
+        return;
+      }
       _player.playing ? await _player.pause() : await _player.play();
     } catch (_) {}
   }
