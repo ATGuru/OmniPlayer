@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/database/app_database.dart';
 import '../../../providers/providers.dart';
+import '../widgets/album_panel.dart';
 import '../widgets/track_tile.dart';
+import '../widgets/edit_dialog.dart';
+import '../widgets/playlist_panel.dart';
+import '../widgets/track_actions.dart';
 
 // ═══════════════════════════════════════════════
 // FILE TREE DATA MODEL
@@ -51,18 +55,43 @@ class _MutableNode {
 // LIBRARY CONTENT  (embeddable — no Scaffold)
 // ═══════════════════════════════════════════════
 
-class LibraryContent extends ConsumerWidget {
+class LibraryContent extends ConsumerStatefulWidget {
   final VoidCallback? onClose;
   const LibraryContent({super.key, this.onClose});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryContent> createState() => _LibraryContentState();
+}
+
+enum _LibraryView { files, albums, playlists }
+
+class _LibraryContentState extends ConsumerState<LibraryContent> {
+  final _search = TextEditingController();
+  var _view = _LibraryView.files;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  List<Track> _filter(List<Track> tracks) {
+    final q = _search.text.trim().toLowerCase();
+    if (q.isEmpty) return tracks;
+    return tracks.where((t) =>
+        t.title.toLowerCase().contains(q) ||
+        t.artist.toLowerCase().contains(q) ||
+        t.album.toLowerCase().contains(q)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final tracksAsync  = ref.watch(tracksProvider);
     final scanState    = ref.watch(scanProvider);
     final scanNotifier = ref.read(scanProvider.notifier);
 
     return Container(
-      color: OmniXColors.deepVoid,
+      color: OmniPlayerColors.deepVoid,
       child: SafeArea(
         child: Column(
           children: [
@@ -71,21 +100,21 @@ class LibraryContent extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
               child: Row(
                 children: [
-                  Text('LIBRARY', style: OmniXTextStyles.orbitronLabel.copyWith(fontSize: 13, letterSpacing: 4)),
+                  Text('LIBRARY', style: OmniPlayerTextStyles.orbitronLabel.copyWith(fontSize: 13, letterSpacing: 4)),
                   const Spacer(),
                   tracksAsync.when(
                     data: (t) => Text(
                       '${t.length} TRACKS',
-                      style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.violet.withOpacity(0.5)),
+                      style: OmniPlayerTextStyles.orbitronMono.copyWith(color: OmniPlayerColors.violet.withOpacity(0.5)),
                     ),
                     loading: () => const SizedBox(),
                     error: (_, __) => const SizedBox(),
                   ),
-                  if (onClose != null) ...[
+                  if (widget.onClose != null) ...[
                     const SizedBox(width: 12),
                     GestureDetector(
-                      onTap: onClose,
-                      child: Icon(Icons.close, color: OmniXColors.cyan.withOpacity(0.5), size: 20),
+                      onTap: widget.onClose,
+                      child: Icon(Icons.close, color: OmniPlayerColors.cyan.withOpacity(0.5), size: 20),
                     ),
                   ],
                 ],
@@ -104,18 +133,83 @@ class LibraryContent extends ConsumerWidget {
             ),
 
             // ── Separator ────────────────────────
-            Divider(height: 1, color: OmniXColors.cyan.withOpacity(0.08)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Row(
+                children: [
+                  _Tab(label: 'FILES', active: _view == _LibraryView.files, onTap: () => setState(() => _view = _LibraryView.files)),
+                  const SizedBox(width: 8),
+                  _Tab(label: 'ALBUMS', active: _view == _LibraryView.albums, onTap: () => setState(() => _view = _LibraryView.albums)),
+                  const SizedBox(width: 8),
+                  _Tab(label: 'PLAYLISTS', active: _view == _LibraryView.playlists, onTap: () => setState(() => _view = _LibraryView.playlists)),
+                ],
+              ),
+            ),
+            if (_view == _LibraryView.files)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: TextField(
+                  controller: _search,
+                  onChanged: (_) => setState(() {}),
+                  style: OmniPlayerTextStyles.rajdhaniBody.copyWith(color: Colors.white),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: 'Search title, artist, album',
+                    hintStyle: OmniPlayerTextStyles.rajdhaniBody.copyWith(color: OmniPlayerColors.textMuted),
+                    prefixIcon: Icon(Icons.search, size: 18, color: OmniPlayerColors.cyan.withOpacity(0.5)),
+                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: OmniPlayerColors.cyan.withOpacity(0.2))),
+                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: OmniPlayerColors.cyan)),
+                  ),
+                ),
+              ),
+            if (scanState.error != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text(
+                  scanState.error!,
+                  style: OmniPlayerTextStyles.rajdhaniBody.copyWith(color: OmniPlayerColors.errorRed, fontSize: 13),
+                ),
+              ),
+
+            Divider(height: 1, color: OmniPlayerColors.cyan.withOpacity(0.08)),
 
             // ── File tree ────────────────────────
             Expanded(
-              child: tracksAsync.when(
+              child: _view == _LibraryView.playlists
+                  ? const PlaylistPanel()
+                  : _view == _LibraryView.albums
+                      ? const AlbumPanel()
+                      : tracksAsync.when(
                 data: (tracks) {
-                  if (tracks.isEmpty) return _EmptyState(onScan: () => scanNotifier.scan());
-                  return _FileTree(tracks: tracks, onTrackSelected: onClose);
+                  final shown = _filter(tracks);
+                  if (tracks.isEmpty) {
+                    return _EmptyState(
+                      onScan: () => scanNotifier.scan(),
+                      message: scanState.error == 'Permission denied'
+                          ? 'Audio permission is off. Tap SCAN DEVICE and allow music access.'
+                          : null,
+                    );
+                  }
+                  if (shown.isEmpty) {
+                    return Center(child: Text('No matches', style: OmniPlayerTextStyles.rajdhaniBody.copyWith(color: OmniPlayerColors.textMuted)));
+                  }
+                  if (_search.text.trim().isNotEmpty) {
+                    return ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      itemCount: shown.length,
+                      itemBuilder: (context, i) => TrackTile(
+                        track: shown[i],
+                        index: i,
+                        allTracks: shown,
+                        onSelected: widget.onClose,
+                      ),
+                    );
+                  }
+                  return _FileTree(tracks: shown, onTrackSelected: widget.onClose);
                 },
-                loading: () => const Center(child: CircularProgressIndicator(color: OmniXColors.cyan)),
+                loading: () => const Center(child: CircularProgressIndicator(color: OmniPlayerColors.cyan)),
                 error: (e, _) => Center(
-                  child: Text('Error: $e', style: OmniXTextStyles.rajdhaniBody.copyWith(color: OmniXColors.errorRed)),
+                  child: Text('Error: $e', style: OmniPlayerTextStyles.rajdhaniBody.copyWith(color: OmniPlayerColors.errorRed)),
                 ),
               ),
             ),
@@ -225,6 +319,17 @@ class _FileTreeState extends ConsumerState<_FileTree> {
     return parts.take(common).join('/');
   }
 
+  // ── Collect all tracks under a node ──────────
+
+  List<Track> _collectTracks(FileTreeNode node) {
+    if (!node.isFolder && node.track != null) return [node.track!];
+    final result = <Track>[];
+    for (final child in node.children) {
+      result.addAll(_collectTracks(child));
+    }
+    return result;
+  }
+
   // ── Flatten visible nodes for ListView ───────
 
   void _flattenInto(FileTreeNode node, int depth, List<(FileTreeNode, int)> out) {
@@ -242,6 +347,7 @@ class _FileTreeState extends ConsumerState<_FileTree> {
   Widget build(BuildContext context) {
     final player   = ref.watch(playerProvider);
     final notifier = ref.read(playerProvider.notifier);
+    final db       = ref.read(databaseProvider);
 
     final visible = <(FileTreeNode, int)>[];
     _flattenInto(_root, 0, visible);
@@ -270,6 +376,26 @@ class _FileTreeState extends ConsumerState<_FileTree> {
               widget.onTrackSelected?.call();
             }
           },
+          onLongPress: node.track == null
+              ? null
+              : () => showTrackActions(context, ref, node.track!),
+          onMenu: () {
+            if (node.isFolder) {
+              final tracks = _collectTracks(node);
+              if (tracks.isEmpty) return;
+              showMoveTracksToAlbum(context, ref, tracks);
+              return;
+            }
+            if (node.track != null) showTrackActions(context, ref, node.track!);
+          },
+          onEdit: () {
+            if (node.isFolder) {
+              final tracks = _collectTracks(node);
+              showBatchEditDialog(context, db, node.name, tracks);
+            } else if (node.track != null) {
+              showTrackEditDialog(context, db, node.track!);
+            }
+          },
         );
       },
     );
@@ -287,6 +413,9 @@ class _TreeRow extends StatelessWidget {
   final bool isActive;
   final bool isPlaying;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onMenu;
+  final VoidCallback? onEdit;
 
   const _TreeRow({
     required this.node,
@@ -295,6 +424,9 @@ class _TreeRow extends StatelessWidget {
     required this.isActive,
     required this.isPlaying,
     required this.onTap,
+    this.onLongPress,
+    this.onMenu,
+    this.onEdit,
   });
 
   String _fmt(int ms) {
@@ -309,15 +441,16 @@ class _TreeRow extends StatelessWidget {
     const baseIndent     = 8.0;
 
     final rowColor = isActive
-        ? OmniXColors.cyan.withOpacity(0.07)
+        ? OmniPlayerColors.cyan.withOpacity(0.07)
         : Colors.transparent;
 
     final leftBorder = isActive
-        ? BorderSide(color: OmniXColors.cyan, width: 2)
+        ? BorderSide(color: OmniPlayerColors.cyan, width: 2)
         : BorderSide.none;
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -339,7 +472,7 @@ class _TreeRow extends StatelessWidget {
               child: node.isFolder
                   ? Icon(
                       isExpanded ? Icons.expand_more : Icons.chevron_right,
-                      color: OmniXColors.cyan.withOpacity(0.45),
+                      color: OmniPlayerColors.cyan.withOpacity(0.45),
                       size: 14,
                     )
                   : null,
@@ -353,10 +486,10 @@ class _TreeRow extends StatelessWidget {
                   : Icons.audio_file_outlined,
               size: 13,
               color: node.isFolder
-                  ? OmniXColors.violet.withOpacity(0.75)
+                  ? OmniPlayerColors.violet.withOpacity(0.75)
                   : isActive
-                      ? OmniXColors.cyan
-                      : OmniXColors.cyan.withOpacity(0.3),
+                      ? OmniPlayerColors.cyan
+                      : OmniPlayerColors.cyan.withOpacity(0.3),
             ),
             const SizedBox(width: 6),
 
@@ -367,12 +500,12 @@ class _TreeRow extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: node.isFolder
-                    ? OmniXTextStyles.rajdhaniSemi.copyWith(
+                    ? OmniPlayerTextStyles.rajdhaniSemi.copyWith(
                         fontSize: 13,
-                        color: OmniXColors.cyan.withOpacity(0.85),
+                        color: OmniPlayerColors.cyan.withOpacity(0.85),
                         letterSpacing: 0.3,
                       )
-                    : OmniXTextStyles.rajdhaniBody.copyWith(
+                    : OmniPlayerTextStyles.rajdhaniBody.copyWith(
                         fontSize: 13,
                         color: isActive ? Colors.white : Colors.white.withOpacity(0.6),
                       ),
@@ -384,9 +517,9 @@ class _TreeRow extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 _fmt(node.track!.duration),
-                style: OmniXTextStyles.orbitronMono.copyWith(
+                style: OmniPlayerTextStyles.orbitronMono.copyWith(
                   fontSize: 8,
-                  color: OmniXColors.cyan.withOpacity(isActive ? 0.6 : 0.25),
+                  color: OmniPlayerColors.cyan.withOpacity(isActive ? 0.6 : 0.25),
                 ),
               ),
             ],
@@ -394,7 +527,40 @@ class _TreeRow extends StatelessWidget {
             // Playing indicator
             if (isPlaying) ...[
               const SizedBox(width: 6),
-              Icon(Icons.graphic_eq, size: 12, color: OmniXColors.activeGreen),
+              Icon(Icons.graphic_eq, size: 12, color: OmniPlayerColors.activeGreen),
+            ],
+
+            if (onMenu != null) ...[
+              const SizedBox(width: 2),
+              GestureDetector(
+                onTap: onMenu,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.more_vert,
+                    size: 14,
+                    color: OmniPlayerColors.cyan.withOpacity(0.55),
+                  ),
+                ),
+              ),
+            ],
+
+            // Edit button
+            if (onEdit != null) ...[
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: onEdit,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.edit_outlined,
+                    size: 11,
+                    color: OmniPlayerColors.cyan.withOpacity(0.22),
+                  ),
+                ),
+              ),
             ],
           ],
         ),
@@ -407,56 +573,14 @@ class _TreeRow extends StatelessWidget {
 // LIBRARY SCREEN  (legacy full-screen wrapper)
 // ═══════════════════════════════════════════════
 
-class LibraryScreen extends ConsumerWidget {
+class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tracksAsync  = ref.watch(tracksProvider);
-    final scanState    = ref.watch(scanProvider);
-    final scanNotifier = ref.read(scanProvider.notifier);
-
-    return Scaffold(
-      backgroundColor: OmniXColors.voidBlack,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('LIBRARY', style: OmniXTextStyles.orbitronLabel.copyWith(fontSize: 13, letterSpacing: 4)),
-                  tracksAsync.when(
-                    data: (t) => Text('${t.length} TRACKS', style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.violet.withOpacity(0.5))),
-                    loading: () => const SizedBox(),
-                    error: (_, __) => const SizedBox(),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: _ScanButton(
-                isScanning: scanState.isScanning,
-                scanned: scanState.scanned,
-                total: scanState.total,
-                onScan: () => scanNotifier.scan(),
-              ),
-            ),
-            Expanded(
-              child: tracksAsync.when(
-                data: (tracks) {
-                  if (tracks.isEmpty) return _EmptyState(onScan: () => scanNotifier.scan());
-                  return _FileTree(tracks: tracks);
-                },
-                loading: () => const Center(child: CircularProgressIndicator(color: OmniXColors.cyan)),
-                error: (e, _) => Center(child: Text('Error: $e', style: OmniXTextStyles.rajdhaniBody.copyWith(color: OmniXColors.errorRed))),
-              ),
-            ),
-          ],
-        ),
-      ),
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: OmniPlayerColors.voidBlack,
+      body: LibraryContent(),
     );
   }
 }
@@ -483,8 +607,8 @@ class _ScanButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: OmniXColors.cyan.withOpacity(isScanning ? 0.5 : 0.25)),
-          color: OmniXColors.cyan.withOpacity(isScanning ? 0.08 : 0.04),
+          border: Border.all(color: OmniPlayerColors.cyan.withOpacity(isScanning ? 0.5 : 0.25)),
+          color: OmniPlayerColors.cyan.withOpacity(isScanning ? 0.08 : 0.04),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -494,19 +618,23 @@ class _ScanButton extends StatelessWidget {
                 width: 14, height: 14,
                 child: CircularProgressIndicator(
                   value: total > 0 ? scanned / total : null,
-                  color: OmniXColors.cyan,
+                  color: OmniPlayerColors.cyan,
                   strokeWidth: 2,
                 ),
               ),
               const SizedBox(width: 10),
               Text(
-                total > 0 ? 'SCANNING $scanned / $total' : 'SCANNING...',
-                style: OmniXTextStyles.orbitronLabel.copyWith(fontSize: 10),
+                total > 0
+                    ? 'SCANNING $scanned / $total'
+                    : scanned > 0
+                        ? 'FOUND $scanned FILES'
+                        : 'SCANNING...',
+                style: OmniPlayerTextStyles.orbitronLabel.copyWith(fontSize: 10),
               ),
             ] else ...[
-              const Icon(Icons.radar, color: OmniXColors.cyan, size: 16),
+              const Icon(Icons.radar, color: OmniPlayerColors.cyan, size: 16),
               const SizedBox(width: 8),
-              Text('SCAN DEVICE', style: OmniXTextStyles.orbitronLabel.copyWith(fontSize: 10)),
+              Text('SCAN DEVICE', style: OmniPlayerTextStyles.orbitronLabel.copyWith(fontSize: 10)),
             ],
           ],
         ),
@@ -519,9 +647,32 @@ class _ScanButton extends StatelessWidget {
 // EMPTY STATE
 // ═══════════════════════════════════════════════
 
+class _Tab extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  const _Tab({required this.label, required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        label,
+        style: OmniPlayerTextStyles.orbitronMono.copyWith(
+          fontSize: 9,
+          letterSpacing: 2,
+          color: active ? OmniPlayerColors.cyan : OmniPlayerColors.cyan.withOpacity(0.35),
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
   final VoidCallback onScan;
-  const _EmptyState({required this.onScan});
+  final String? message;
+  const _EmptyState({required this.onScan, this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -529,11 +680,15 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.library_music_outlined, size: 64, color: OmniXColors.cyan.withOpacity(0.2)),
+          Icon(Icons.library_music_outlined, size: 64, color: OmniPlayerColors.cyan.withOpacity(0.2)),
           const SizedBox(height: 16),
-          Text('NO TRACKS', style: OmniXTextStyles.orbitronLabel.copyWith(fontSize: 12, color: OmniXColors.cyan.withOpacity(0.4))),
+          Text('NO TRACKS', style: OmniPlayerTextStyles.orbitronLabel.copyWith(fontSize: 12, color: OmniPlayerColors.cyan.withOpacity(0.4))),
           const SizedBox(height: 8),
-          Text('Tap SCAN DEVICE to find your music', style: OmniXTextStyles.rajdhaniBody.copyWith(color: OmniXColors.textMuted)),
+          Text(
+            message ?? 'Tap SCAN DEVICE to find your music',
+            textAlign: TextAlign.center,
+            style: OmniPlayerTextStyles.rajdhaniBody.copyWith(color: OmniPlayerColors.textMuted),
+          ),
         ],
       ),
     );

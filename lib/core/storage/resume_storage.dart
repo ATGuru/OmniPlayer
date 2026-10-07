@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 class ResumeStorage {
@@ -12,7 +13,9 @@ class ResumeStorage {
     try {
       final f = await _file();
       await f.writeAsString(jsonEncode({'track_id': trackId, 'position_ms': positionMs}));
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[ResumeStorage] save error: $e');
+    }
   }
 
   static Future<({int trackId, int positionMs})?> load() async {
@@ -21,7 +24,8 @@ class ResumeStorage {
       if (!await f.exists()) return null;
       final map = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
       return (trackId: map['track_id'] as int, positionMs: map['position_ms'] as int);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[ResumeStorage] load error: $e');
       return null;
     }
   }

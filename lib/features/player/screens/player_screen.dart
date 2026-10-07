@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/providers.dart';
+import '../widgets/album_art.dart';
 import '../widgets/holo_panel.dart';
 import '../widgets/spectrum_ring.dart';
 import '../widgets/waveform_bar.dart';
 import '../widgets/control_buttons.dart';
+import '../widgets/queue_sheet.dart';
+import '../../free_music/free_music_screen.dart';
+import '../../about/about_screen.dart';
 import '../../library/screens/library_screen.dart';
+import '../../onboarding/onboarding_dialog.dart';
+import '../../visualizer/visualizer_screen.dart';
 
 class PlayerScreen extends ConsumerStatefulWidget {
   const PlayerScreen({super.key});
@@ -18,9 +25,27 @@ class PlayerScreen extends ConsumerStatefulWidget {
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _libraryOpen = false;
+  var _guideScheduled = false;
 
   void _toggleLibrary() => setState(() => _libraryOpen = !_libraryOpen);
   void _closeLibrary()  => setState(() => _libraryOpen = false);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openGuideIfNeeded());
+  }
+
+  Future<void> _openGuideIfNeeded() async {
+    if (_guideScheduled || !mounted) return;
+    _guideScheduled = true;
+    final seen = await ref.read(databaseProvider).getSetting(AppDatabase.onboardingSeenKey);
+    if (seen == '1' || !mounted) return;
+    final finished = await showOnboarding(context);
+    if (finished && mounted) {
+      await ref.read(databaseProvider).setSetting(AppDatabase.onboardingSeenKey, '1');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +53,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       if (next != null && next != prev) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(next, style: const TextStyle(fontFamily: 'Rajdhani', fontSize: 13)),
-          backgroundColor: OmniXColors.errorRed.withOpacity(0.92),
+          backgroundColor: OmniPlayerColors.errorRed.withOpacity(0.92),
           duration: const Duration(seconds: 6),
           behavior: SnackBarBehavior.floating,
         ));
@@ -41,7 +66,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final panelW   = MediaQuery.of(context).size.width * 0.85;
 
     return Scaffold(
-      backgroundColor: OmniXColors.voidBlack,
+      backgroundColor: OmniPlayerColors.voidBlack,
       body: Stack(
         children: [
           // ── Ambient background ──────────────────
@@ -50,11 +75,15 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           // ── Player content ──────────────────────
           SafeArea(
             child: SingleChildScrollView(
-              padding: OmniXSpacing.screenPadding,
+              padding: OmniPlayerSpacing.screenPadding,
               child: Column(
                 children: [
                   const SizedBox(height: 8),
-                  _HeaderBar(onLibraryToggle: _toggleLibrary),
+                  _HeaderBar(
+                    onLibraryToggle: _toggleLibrary,
+                    onQueue: () => showQueueSheet(context),
+                    onHelp: () => showOnboarding(context),
+                  ),
                   const SizedBox(height: 20),
                   HoloPanel(
                     child: Column(
@@ -62,18 +91,24 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         Stack(
                           alignment: Alignment.center,
                           children: [
-                            SpectrumRing(isPlaying: player.isPlaying, size: 200),
+                            SpectrumRing(
+                              isPlaying: player.isPlaying,
+                              size: 200,
+                            ),
+                            AlbumArt(track: track, size: 112),
                             if (player.isLoading)
                               const SizedBox(
                                 width: 36, height: 36,
-                                child: CircularProgressIndicator(color: OmniXColors.cyan, strokeWidth: 2),
+                                child: CircularProgressIndicator(color: OmniPlayerColors.cyan, strokeWidth: 2),
                               ),
                           ],
                         ),
                         const SizedBox(height: 24),
                         _TrackInfo(track: track),
                         const SizedBox(height: 16),
-                        WaveformBar(isPlaying: player.isPlaying),
+                        WaveformBar(
+                          isPlaying: player.isPlaying,
+                        ),
                         const SizedBox(height: 16),
                         _ProgressBar(
                           progress: player.progressFraction,
@@ -90,6 +125,36 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   ),
                   const SizedBox(height: 12),
                   _StatusBar(isPlaying: player.isPlaying, trackCount: player.queue.length),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      _ScreenButton(
+                        label: 'FREE MUSIC',
+                        color: OmniPlayerColors.cyan,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const FreeMusicScreen()),
+                        ),
+                      ),
+                      _ScreenButton(
+                        label: 'CREATE NEW SONG',
+                        color: OmniPlayerColors.magenta,
+                        onTap: () => launchUrl(
+                          Uri.parse('https://lyricsintosong.com'),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
+                      _ScreenButton(
+                        label: 'ABOUT',
+                        color: OmniPlayerColors.violet,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const AboutScreen()),
+                        ),
+                      ),
+                    ],
+                  ),
                   if (player.error != null) ...[
                     const SizedBox(height: 8),
                     Padding(
@@ -97,8 +162,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       child: Text(
                         player.error!,
                         textAlign: TextAlign.center,
-                        style: OmniXTextStyles.orbitronMono.copyWith(
-                          color: OmniXColors.errorRed,
+                        style: OmniPlayerTextStyles.orbitronMono.copyWith(
+                          color: OmniPlayerColors.errorRed,
                           fontSize: 8,
                         ),
                       ),
@@ -128,11 +193,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 border: Border(
-                  left: BorderSide(color: OmniXColors.cyan.withOpacity(0.2), width: 1),
+                  left: BorderSide(color: OmniPlayerColors.cyan.withOpacity(0.2), width: 1),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: OmniXColors.cyan.withOpacity(0.06),
+                    color: OmniPlayerColors.cyan.withOpacity(0.06),
                     blurRadius: 32,
                     offset: const Offset(-8, 0),
                   ),
@@ -151,7 +216,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
 class _HeaderBar extends StatelessWidget {
   final VoidCallback onLibraryToggle;
-  const _HeaderBar({required this.onLibraryToggle});
+  final VoidCallback onQueue;
+  final VoidCallback onHelp;
+  const _HeaderBar({required this.onLibraryToggle, required this.onQueue, required this.onHelp});
 
   @override
   Widget build(BuildContext context) {
@@ -159,32 +226,81 @@ class _HeaderBar extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          'OMNIX AUDIO',
-          style: OmniXTextStyles.orbitronLabel.copyWith(
+          'OMNIPLAYER',
+          style: OmniPlayerTextStyles.orbitronLabel.copyWith(
             fontSize: 11,
             letterSpacing: 4,
-            color: OmniXColors.cyan.withOpacity(0.7),
+            color: OmniPlayerColors.cyan.withOpacity(0.7),
           ),
         ),
         Row(children: [
-          _dot(OmniXColors.cyan),
+          _dot(OmniPlayerColors.cyan),
           const SizedBox(width: 5),
-          _dot(OmniXColors.violet),
+          _dot(OmniPlayerColors.violet),
           const SizedBox(width: 5),
-          _dot(OmniXColors.magenta),
+          _dot(OmniPlayerColors.magenta),
         ]),
-        GestureDetector(
-          onTap: onLibraryToggle,
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Icon(
-              Icons.library_music_outlined,
-              color: OmniXColors.cyan.withOpacity(0.7),
-              size: 20,
+        Row(children: [
+          GestureDetector(
+            onTap: onHelp,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                Icons.help_outline,
+                color: OmniPlayerColors.cyan.withOpacity(0.7),
+                size: 20,
+              ),
             ),
           ),
-        ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onQueue,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                Icons.queue_music,
+                color: OmniPlayerColors.cyan.withOpacity(0.7),
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              PageRouteBuilder(
+                opaque: false,
+                pageBuilder: (_, __, ___) => const VisualizerScreen(),
+                transitionsBuilder: (_, anim, __, child) =>
+                    FadeTransition(opacity: anim, child: child),
+                transitionDuration: const Duration(milliseconds: 400),
+              ),
+            ),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                Icons.graphic_eq,
+                color: OmniPlayerColors.cyan.withOpacity(0.7),
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onLibraryToggle,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                Icons.library_music_outlined,
+                color: OmniPlayerColors.cyan.withOpacity(0.7),
+                size: 20,
+              ),
+            ),
+          ),
+        ]),
       ],
     );
   }
@@ -197,6 +313,36 @@ class _HeaderBar extends StatelessWidget {
       boxShadow: [BoxShadow(color: c.withOpacity(0.8), blurRadius: 6)],
     ),
   );
+}
+
+class _ScreenButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ScreenButton({required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withOpacity(0.5)),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          label,
+          style: OmniPlayerTextStyles.orbitronMono.copyWith(
+            color: color.withOpacity(0.75),
+            fontSize: 10,
+            letterSpacing: 2,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ── Track info ─────────────────────────────────
@@ -227,26 +373,29 @@ class _TrackInfo extends StatelessWidget {
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: OmniXTextStyles.orbitronTitle.copyWith(
+          style: OmniPlayerTextStyles.orbitronTitle.copyWith(
             fontSize: 17,
-            shadows: [Shadow(color: OmniXColors.cyan.withOpacity(0.5), blurRadius: 20)],
+            shadows: [Shadow(color: OmniPlayerColors.cyan.withOpacity(0.5), blurRadius: 20)],
           ),
         ),
         const SizedBox(height: 4),
-        Text(artist, style: OmniXTextStyles.rajdhaniSemi.copyWith(color: OmniXColors.cyan.withOpacity(0.6), letterSpacing: 2)),
+        Text(artist, style: OmniPlayerTextStyles.rajdhaniSemi.copyWith(color: OmniPlayerColors.cyan.withOpacity(0.6), letterSpacing: 2)),
         const SizedBox(height: 2),
-        Text(album, style: OmniXTextStyles.rajdhaniBody.copyWith(color: OmniXColors.violet.withOpacity(0.5), fontSize: 12)),
+        Text(album, style: OmniPlayerTextStyles.rajdhaniBody.copyWith(color: OmniPlayerColors.violet.withOpacity(0.5), fontSize: 12)),
         if (track != null) ...[
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(_badge(track!), style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.cyan.withOpacity(0.5))),
+              Text(_badge(track!), style: OmniPlayerTextStyles.orbitronMono.copyWith(color: OmniPlayerColors.cyan.withOpacity(0.5))),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Text('◆', style: TextStyle(color: Colors.white.withOpacity(0.1), fontSize: 8)),
               ),
-              Text('LOCAL', style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.magenta.withOpacity(0.5))),
+              Text(
+                track!.licenseName ?? 'LOCAL',
+                style: OmniPlayerTextStyles.orbitronMono.copyWith(color: OmniPlayerColors.magenta.withOpacity(0.5)),
+              ),
             ],
           ),
         ],
@@ -283,11 +432,11 @@ class _ProgressBar extends StatelessWidget {
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
             trackHeight: 3,
-            activeTrackColor: OmniXColors.cyan,
-            inactiveTrackColor: OmniXColors.cyan.withOpacity(0.12),
-            thumbColor: OmniXColors.cyan,
+            activeTrackColor: OmniPlayerColors.cyan,
+            inactiveTrackColor: OmniPlayerColors.cyan.withOpacity(0.12),
+            thumbColor: OmniPlayerColors.cyan,
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-            overlayColor: OmniXColors.cyan.withOpacity(0.15),
+            overlayColor: OmniPlayerColors.cyan.withOpacity(0.15),
           ),
           child: Slider(
             value: progress.clamp(0.0, 1.0),
@@ -299,8 +448,8 @@ class _ProgressBar extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(_fmt(position), style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.cyan.withOpacity(0.5))),
-              Text(_fmt(duration), style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.cyan.withOpacity(0.3))),
+              Text(_fmt(position), style: OmniPlayerTextStyles.orbitronMono.copyWith(color: OmniPlayerColors.cyan.withOpacity(0.5))),
+              Text(_fmt(duration), style: OmniPlayerTextStyles.orbitronMono.copyWith(color: OmniPlayerColors.cyan.withOpacity(0.3))),
             ],
           ),
         ),
@@ -329,16 +478,16 @@ class _VolumeRowState extends ConsumerState<_VolumeRow> {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.volume_down, color: OmniXColors.cyan.withOpacity(0.4), size: 18),
+        Icon(Icons.volume_down, color: OmniPlayerColors.cyan.withOpacity(0.4), size: 18),
         Expanded(
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
               trackHeight: 3,
-              activeTrackColor: OmniXColors.magenta.withOpacity(0.8),
-              inactiveTrackColor: OmniXColors.cyan.withOpacity(0.1),
-              thumbColor: OmniXColors.magenta,
+              activeTrackColor: OmniPlayerColors.magenta.withOpacity(0.8),
+              inactiveTrackColor: OmniPlayerColors.cyan.withOpacity(0.1),
+              thumbColor: OmniPlayerColors.magenta,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-              overlayColor: OmniXColors.magenta.withOpacity(0.15),
+              overlayColor: OmniPlayerColors.magenta.withOpacity(0.15),
             ),
             child: Slider(
               value: _volume,
@@ -349,11 +498,11 @@ class _VolumeRowState extends ConsumerState<_VolumeRow> {
             ),
           ),
         ),
-        Icon(Icons.volume_up, color: OmniXColors.magenta.withOpacity(0.5), size: 18),
+        Icon(Icons.volume_up, color: OmniPlayerColors.magenta.withOpacity(0.5), size: 18),
         const SizedBox(width: 6),
         Text(
           '${(_volume * 100).round()}%',
-          style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.violet.withOpacity(0.5), fontSize: 9),
+          style: OmniPlayerTextStyles.orbitronMono.copyWith(color: OmniPlayerColors.violet.withOpacity(0.5), fontSize: 9),
         ),
       ],
     );
@@ -373,30 +522,30 @@ class _StatusBar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text('LOCAL LIBRARY', style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.cyan.withOpacity(0.3))),
+        Text('LOCAL LIBRARY', style: OmniPlayerTextStyles.orbitronMono.copyWith(color: OmniPlayerColors.cyan.withOpacity(0.3))),
         Row(children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             width: 7, height: 7,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isPlaying ? OmniXColors.activeGreen : Colors.white.withOpacity(0.2),
+              color: isPlaying ? OmniPlayerColors.activeGreen : Colors.white.withOpacity(0.2),
               boxShadow: isPlaying
-                  ? [BoxShadow(color: OmniXColors.activeGreen.withOpacity(0.8), blurRadius: 8)]
+                  ? [BoxShadow(color: OmniPlayerColors.activeGreen.withOpacity(0.8), blurRadius: 8)]
                   : [],
             ),
           ),
           const SizedBox(width: 6),
           Text(
             isPlaying ? 'PLAYING' : 'STANDBY',
-            style: OmniXTextStyles.orbitronMono.copyWith(
-              color: isPlaying ? OmniXColors.activeGreen : Colors.white.withOpacity(0.2),
+            style: OmniPlayerTextStyles.orbitronMono.copyWith(
+              color: isPlaying ? OmniPlayerColors.activeGreen : Colors.white.withOpacity(0.2),
             ),
           ),
         ]),
         Text(
           '$trackCount TRACKS',
-          style: OmniXTextStyles.orbitronMono.copyWith(color: OmniXColors.violet.withOpacity(0.3)),
+          style: OmniPlayerTextStyles.orbitronMono.copyWith(color: OmniPlayerColors.violet.withOpacity(0.3)),
         ),
       ],
     );
@@ -420,9 +569,9 @@ class _AmbientPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final orbs = [
-      (Offset(size.width * 0.1, size.height * 0.1), OmniXColors.cyan, 160.0),
-      (Offset(size.width * 0.85, size.height * 0.25), OmniXColors.violet, 120.0),
-      (Offset(size.width * 0.4, size.height * 0.7), OmniXColors.magenta, 100.0),
+      (Offset(size.width * 0.1, size.height * 0.1), OmniPlayerColors.cyan, 160.0),
+      (Offset(size.width * 0.85, size.height * 0.25), OmniPlayerColors.violet, 120.0),
+      (Offset(size.width * 0.4, size.height * 0.7), OmniPlayerColors.magenta, 100.0),
     ];
 
     for (final (center, color, radius) in orbs) {

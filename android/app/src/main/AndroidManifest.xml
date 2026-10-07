@@ -6,6 +6,9 @@
          Android 10–12:       READ_EXTERNAL_STORAGE (still required)
          Android 13+:         READ_MEDIA_AUDIO replaces storage permission
     ═══════════════════════════════════════════════ -->
+    <!-- Open-music catalog search, in-app previews, and downloads. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
@@ -28,7 +31,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
-        android:label="OmniX Audio"
+        android:label="OmniPlayer"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"

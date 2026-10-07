@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ═══════════════════════════════════════════════════════════
-# OmniX Audio — Project Setup Script
+# OmniPlayer — Project Setup Script
 # Run from inside your omnix_audio/ project root
 # ═══════════════════════════════════════════════════════════
 
@@ -20,7 +20,7 @@ echo "██║   ██║██╔████╔██║██╔██╗ �
 echo "██║   ██║██║╚██╔╝██║██║╚██╗██║██║ ██╔██╗ "
 echo "╚██████╔╝██║ ╚═╝ ██║██║ ╚████║██║██╔╝ ██╗"
 echo "  ╚═════╝ ╚═╝     ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝"
-echo -e "          AUDIO — Setup Script${RESET}"
+echo -e "          PLAYER — Setup Script${RESET}"
 echo ""
 
 # ── 0. Confirm we're in the right place ─────────────────────
@@ -191,11 +191,11 @@ class PlayerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: OmniXColors.voidBlack,
+      backgroundColor: OmniPlayerColors.voidBlack,
       body: Center(
         child: Text(
           'PLAYER — STEP 4',
-          style: OmniXTextStyles.orbitronLabel,
+          style: OmniPlayerTextStyles.orbitronLabel,
         ),
       ),
     );
@@ -214,11 +214,11 @@ class LibraryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: OmniXColors.voidBlack,
+      backgroundColor: OmniPlayerColors.voidBlack,
       body: Center(
         child: Text(
           'LIBRARY — STEP 2',
-          style: OmniXTextStyles.orbitronLabel,
+          style: OmniPlayerTextStyles.orbitronLabel,
         ),
       ),
     );
@@ -235,7 +235,7 @@ flutter pub get
 
 echo ""
 echo -e "${MAGENTA}═══════════════════════════════════════${RESET}"
-echo -e "${GREEN}  OMNIX AUDIO SETUP COMPLETE${RESET}"
+echo -e "${GREEN}  OMNIPLAYER SETUP COMPLETE${RESET}"
 echo -e "${MAGENTA}═══════════════════════════════════════${RESET}"
 echo ""
 echo -e "  Next: ${CYAN}flutter run${RESET} to verify app boots"

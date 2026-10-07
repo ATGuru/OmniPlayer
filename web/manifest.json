@@ -1,6 +1,6 @@
 {
-    "name": "omnix_audio",
-    "short_name": "omnix_audio",
+    "name": "omniplayer",
+    "short_name": "omniplayer",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

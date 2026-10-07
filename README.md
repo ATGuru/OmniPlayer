@@ -1,4 +1,4 @@
-# OmniX Audio — Flutter Project Structure
+# OmniPlayer — Flutter Project Structure
 ## AllTechGuru · Holographic Cyberpunk MP3 Player
 
 ---
@@ -6,7 +6,7 @@
 ## 📁 Directory Map
 
 ```
-omnix_audio/
+omniplayer/
 ├── pubspec.yaml                          ← All dependencies (Step 1 ✅)
 ├── android/
 │   └── app/src/main/
@@ -53,8 +53,8 @@ omnix_audio/
 
 ### 1. Create Flutter project
 ```bash
-flutter create omnix_audio --org com.atguru
-cd omnix_audio
+flutter create omniplayer --org com.atguru
+cd omniplayer
 ```
 
 ### 2. Replace generated files with scaffold files

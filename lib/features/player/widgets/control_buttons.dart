@@ -24,7 +24,7 @@ class ControlButtons extends ConsumerWidget {
         _IconBtn(
           icon: Icons.shuffle,
           active: player.shuffle,
-          activeColor: OmniXColors.cyan,
+          activeColor: OmniPlayerColors.cyan,
           onTap: () => notifier.toggleShuffle(),
         ),
 
@@ -61,7 +61,7 @@ class ControlButtons extends ConsumerWidget {
             _ => Icons.repeat,
           },
           active: player.repeatMode != AudioServiceRepeatMode.none,
-          activeColor: OmniXColors.magenta,
+          activeColor: OmniPlayerColors.magenta,
           onTap: () => notifier.cycleRepeat(),
         ),
       ],
@@ -123,17 +123,17 @@ class _PlayPauseBtnState extends State<_PlayPauseBtn>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: widget.isPlaying ? OmniXColors.cyan : OmniXColors.violet,
+              color: widget.isPlaying ? OmniPlayerColors.cyan : OmniPlayerColors.violet,
               width: 2,
             ),
             gradient: RadialGradient(
               colors: widget.isPlaying
-                  ? [OmniXColors.cyan.withOpacity(0.15), Colors.transparent]
-                  : [OmniXColors.violet.withOpacity(0.15), Colors.transparent],
+                  ? [OmniPlayerColors.cyan.withOpacity(0.15), Colors.transparent]
+                  : [OmniPlayerColors.violet.withOpacity(0.15), Colors.transparent],
             ),
             boxShadow: [
               BoxShadow(
-                color: (widget.isPlaying ? OmniXColors.cyan : OmniXColors.violet)
+                color: (widget.isPlaying ? OmniPlayerColors.cyan : OmniPlayerColors.violet)
                     .withOpacity(0.4),
                 blurRadius: widget.isPlaying ? 24 : 12,
                 spreadRadius: 0,
@@ -163,7 +163,7 @@ class _SkipBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Icon(icon, color: OmniXColors.cyan.withOpacity(0.75), size: 36),
+      child: Icon(icon, color: OmniPlayerColors.cyan.withOpacity(0.75), size: 36),
     );
   }
 }

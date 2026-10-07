@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 /// ═══════════════════════════════════════════════
-/// OMNIX AUDIO — COLOR SYSTEM
+/// OMNIPLAYER — COLOR SYSTEM
 /// Holographic Cyberpunk Palette
 /// ═══════════════════════════════════════════════
-abstract class OmniXColors {
+abstract class OmniPlayerColors {
   // Core void
   static const Color voidBlack    = Color(0xFF030508);
   static const Color deepVoid     = Color(0xFF050A12);
@@ -48,14 +48,14 @@ abstract class OmniXColors {
 }
 
 /// ═══════════════════════════════════════════════
-/// OMNIX AUDIO — TEXT STYLES
+/// OMNIPLAYER — TEXT STYLES
 /// ═══════════════════════════════════════════════
-abstract class OmniXTextStyles {
+abstract class OmniPlayerTextStyles {
   static const TextStyle orbitronTitle = TextStyle(
     fontFamily: 'Orbitron',
     fontSize: 20,
     fontWeight: FontWeight.w700,
-    color: OmniXColors.textPrimary,
+    color: OmniPlayerColors.textPrimary,
     letterSpacing: 1.5,
   );
 
@@ -63,7 +63,7 @@ abstract class OmniXTextStyles {
     fontFamily: 'Orbitron',
     fontSize: 10,
     fontWeight: FontWeight.w400,
-    color: OmniXColors.cyan,
+    color: OmniPlayerColors.cyan,
     letterSpacing: 3.0,
   );
 
@@ -78,76 +78,76 @@ abstract class OmniXTextStyles {
     fontFamily: 'Rajdhani',
     fontSize: 14,
     fontWeight: FontWeight.w400,
-    color: OmniXColors.textSecondary,
+    color: OmniPlayerColors.textSecondary,
   );
 
   static const TextStyle rajdhaniSemi = TextStyle(
     fontFamily: 'Rajdhani',
     fontSize: 13,
     fontWeight: FontWeight.w600,
-    color: OmniXColors.textPrimary,
+    color: OmniPlayerColors.textPrimary,
     letterSpacing: 0.5,
   );
 }
 
 /// ═══════════════════════════════════════════════
-/// OMNIX AUDIO — THEME
+/// OMNIPLAYER — THEME
 /// ═══════════════════════════════════════════════
-class OmniXTheme {
+class OmniPlayerTheme {
   static ThemeData dark() {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: OmniXColors.voidBlack,
+      scaffoldBackgroundColor: OmniPlayerColors.voidBlack,
       colorScheme: const ColorScheme.dark(
-        primary: OmniXColors.cyan,
-        secondary: OmniXColors.violet,
-        tertiary: OmniXColors.magenta,
-        surface: OmniXColors.panelSurface,
-        background: OmniXColors.voidBlack,
-        onPrimary: OmniXColors.voidBlack,
-        onSecondary: OmniXColors.textPrimary,
-        onSurface: OmniXColors.textPrimary,
+        primary: OmniPlayerColors.cyan,
+        secondary: OmniPlayerColors.violet,
+        tertiary: OmniPlayerColors.magenta,
+        surface: OmniPlayerColors.panelSurface,
+        background: OmniPlayerColors.voidBlack,
+        onPrimary: OmniPlayerColors.voidBlack,
+        onSecondary: OmniPlayerColors.textPrimary,
+        onSurface: OmniPlayerColors.textPrimary,
       ),
       fontFamily: 'Rajdhani',
 
       // Slider (volume, seek bar)
       sliderTheme: SliderThemeData(
-        activeTrackColor: OmniXColors.cyan,
-        inactiveTrackColor: OmniXColors.cyan.withOpacity(0.12),
-        thumbColor: OmniXColors.cyan,
-        overlayColor: OmniXColors.cyan.withOpacity(0.15),
+        activeTrackColor: OmniPlayerColors.cyan,
+        inactiveTrackColor: OmniPlayerColors.cyan.withOpacity(0.12),
+        thumbColor: OmniPlayerColors.cyan,
+        overlayColor: OmniPlayerColors.cyan.withOpacity(0.15),
         trackHeight: 3,
         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
       ),
 
       // Icon
-      iconTheme: const IconThemeData(color: OmniXColors.cyan, size: 22),
+      iconTheme: const IconThemeData(color: OmniPlayerColors.cyan, size: 22),
 
       // Bottom nav
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: OmniXColors.voidBlack,
-        selectedItemColor: OmniXColors.cyan,
-        unselectedItemColor: OmniXColors.cyan.withOpacity(0.25),
+        backgroundColor: OmniPlayerColors.voidBlack,
+        selectedItemColor: OmniPlayerColors.cyan,
+        unselectedItemColor: OmniPlayerColors.cyan.withOpacity(0.25),
       ),
 
       // Divider
       dividerTheme: DividerThemeData(
-        color: OmniXColors.cyan.withOpacity(0.1),
+        color: OmniPlayerColors.cyan.withOpacity(0.1),
         thickness: 1,
       ),
 
       // Ripple
-      splashColor: OmniXColors.cyan.withOpacity(0.08),
-      highlightColor: OmniXColors.cyan.withOpacity(0.04),
+      splashColor: OmniPlayerColors.cyan.withOpacity(0.08),
+      highlightColor: OmniPlayerColors.cyan.withOpacity(0.04),
     );
   }
 }
 
 /// ═══════════════════════════════════════════════
-/// OMNIX AUDIO — SPACING CONSTANTS
+/// OMNIPLAYER — SPACING CONSTANTS
 /// ═══════════════════════════════════════════════
-abstract class OmniXSpacing {
+abstract class OmniPlayerSpacing {
   static const double xs  = 4.0;
   static const double sm  = 8.0;
   static const double md  = 16.0;

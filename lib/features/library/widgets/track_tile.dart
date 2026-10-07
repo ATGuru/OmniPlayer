@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/database/app_database.dart';
 import '../../../providers/providers.dart';
+import 'track_actions.dart';
 
 class TrackTile extends ConsumerWidget {
   final Track track;
@@ -49,10 +50,10 @@ class TrackTile extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: isActive ? OmniXColors.cyan.withOpacity(0.08) : Colors.transparent,
+          color: isActive ? OmniPlayerColors.cyan.withOpacity(0.08) : Colors.transparent,
           border: Border(
             left: BorderSide(
-              color: isActive ? OmniXColors.cyan : Colors.transparent,
+              color: isActive ? OmniPlayerColors.cyan : Colors.transparent,
               width: 2,
             ),
           ),
@@ -65,8 +66,8 @@ class TrackTile extends ConsumerWidget {
               child: Text(
                 isActive && player.isPlaying ? '▶' : '${index + 1}'.padLeft(2, '0'),
                 textAlign: TextAlign.center,
-                style: OmniXTextStyles.orbitronMono.copyWith(
-                  color: isActive ? OmniXColors.cyan : Colors.white.withOpacity(0.2),
+                style: OmniPlayerTextStyles.orbitronMono.copyWith(
+                  color: isActive ? OmniPlayerColors.cyan : Colors.white.withOpacity(0.2),
                   fontSize: isActive ? 10 : 9,
                 ),
               ),
@@ -82,7 +83,7 @@ class TrackTile extends ConsumerWidget {
                     track.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: OmniXTextStyles.rajdhaniSemi.copyWith(
+                    style: OmniPlayerTextStyles.rajdhaniSemi.copyWith(
                       color: isActive ? Colors.white : Colors.white.withOpacity(0.7),
                       fontSize: 14,
                     ),
@@ -91,8 +92,8 @@ class TrackTile extends ConsumerWidget {
                     track.artist,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: OmniXTextStyles.rajdhaniBody.copyWith(
-                      color: OmniXColors.cyan.withOpacity(0.4),
+                    style: OmniPlayerTextStyles.rajdhaniBody.copyWith(
+                      color: OmniPlayerColors.cyan.withOpacity(0.4),
                       fontSize: 12,
                     ),
                   ),
@@ -103,13 +104,19 @@ class TrackTile extends ConsumerWidget {
             // Duration
             Text(
               _fmtDuration(track.duration),
-              style: OmniXTextStyles.orbitronMono.copyWith(
-                color: OmniXColors.cyan.withOpacity(0.3),
+              style: OmniPlayerTextStyles.orbitronMono.copyWith(
+                color: OmniPlayerColors.cyan.withOpacity(0.3),
                 fontSize: 9,
               ),
             ),
 
             const SizedBox(width: 8),
+
+            GestureDetector(
+              onTap: () => showTrackActions(context, ref, track),
+              child: Icon(Icons.more_vert, size: 16, color: OmniPlayerColors.cyan.withOpacity(0.45)),
+            ),
+            const SizedBox(width: 6),
 
             // Favorite
             GestureDetector(
@@ -117,7 +124,7 @@ class TrackTile extends ConsumerWidget {
               child: Icon(
                 track.isFavorite ? Icons.favorite : Icons.favorite_border,
                 size: 16,
-                color: track.isFavorite ? OmniXColors.magenta : Colors.white.withOpacity(0.15),
+                color: track.isFavorite ? OmniPlayerColors.magenta : Colors.white.withOpacity(0.15),
               ),
             ),
           ],

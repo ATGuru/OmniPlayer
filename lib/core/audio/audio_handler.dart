@@ -8,15 +8,20 @@ final audioHandlerProvider = Provider<AudioHandler>((ref) {
 });
 
 /// ═══════════════════════════════════════════════
-/// OMNIX AUDIO HANDLER
+/// OMNIPLAYER HANDLER
 /// Bridges just_audio ↔ audio_service
 /// Handles: background playback, lock screen controls,
 ///           notification media controls, headset buttons
 /// ═══════════════════════════════════════════════
-class OmniXAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
+class OmniPlayerHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player = AudioPlayer();
 
-  OmniXAudioHandler() {
+  /// Phone controls call these so the in-app title and the notification stay
+  /// on the same track. PlayerNotifier owns the queue.
+  Future<void> Function()? onSkipNext;
+  Future<void> Function()? onSkipPrevious;
+
+  OmniPlayerHandler() {
     _init();
   }
 
@@ -24,16 +29,11 @@ class OmniXAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler 
     // Forward player state → audio_service playback state
     _player.playbackEventStream.listen(_broadcastState);
 
-    // When track ends, auto-advance queue
-    _player.processingStateStream.listen((state) {
-      if (state == ProcessingState.completed) {
-        skipToNext();
-      }
-    });
-
-    // Forward current index changes to mediaItem stream
+    // Forward current index changes to mediaItem stream.
+    // A one-file source keeps index 0, so this often does not emit on skip.
+    // updateQueue publishes the media item itself for that case.
     _player.currentIndexStream.listen((index) {
-      if (index != null && queue.value.isNotEmpty) {
+      if (index != null && index >= 0 && index < queue.value.length) {
         mediaItem.add(queue.value[index]);
       }
     });
@@ -43,11 +43,18 @@ class OmniXAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler 
   /// Call this whenever PlayerNotifier rebuilds the playback queue so that
   /// lock-screen / notification controls show the correct track info.
   @override
-  Future<void> updateQueue(List<MediaItem> items) async => queue.add(items);
+  Future<void> updateQueue(List<MediaItem> items) async {
+    queue.add(items);
+    if (items.isNotEmpty) mediaItem.add(items.first);
+  }
 
   /// Load a list of tracks into the player queue
   Future<void> loadQueue(List<MediaItem> items, {int initialIndex = 0}) async {
     queue.add(items);
+    if (items.isNotEmpty) {
+      final index = initialIndex.clamp(0, items.length - 1).toInt();
+      mediaItem.add(items[index]);
+    }
 
     final sources = items.map((item) => AudioSource.uri(
       Uri.parse(item.id), // item.id = file path
@@ -81,6 +88,11 @@ class OmniXAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler 
 
   @override
   Future<void> skipToNext() async {
+    final hook = onSkipNext;
+    if (hook != null) {
+      await hook();
+      return;
+    }
     if (_player.hasNext) {
       await _player.seekToNext();
     }
@@ -88,6 +100,11 @@ class OmniXAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler 
 
   @override
   Future<void> skipToPrevious() async {
+    final hook = onSkipPrevious;
+    if (hook != null) {
+      await hook();
+      return;
+    }
     // If more than 3s in: restart current track instead of going back
     if (_player.position.inSeconds > 3) {
       await _player.seek(Duration.zero);

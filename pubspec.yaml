@@ -1,7 +1,7 @@
-name: omnix_audio
-description: OmniX Audio — Holographic Cyberpunk MP3 Player by AllTechGuru
+name: omniplayer
+description: OmniPlayer — Holographic Cyberpunk MP3 Player by AllTechGuru
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.6.0+7
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -36,6 +36,7 @@ dependencies:
 
   # Utils
   rxdart: ^0.27.7
+  url_launcher: ^6.2.6
 
 dev_dependencies:
   flutter_test:
@@ -67,7 +68,7 @@ flutter:
       fonts:
         - asset: assets/fonts/Rajdhani-Light.ttf
           weight: 300
-        - asset: assets/fonts/Rajdhani-Medium.ttf
+        - asset: assets/fonts/Rajdhani-Regular.ttf
           weight: 400
         - asset: assets/fonts/Rajdhani-SemiBold.ttf
           weight: 600
