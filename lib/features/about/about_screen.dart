@@ -53,6 +53,26 @@ class AboutScreen extends StatelessWidget {
           const _Link(label: 'guru_morgan@atguru.xyz', url: 'mailto:guru_morgan@atguru.xyz'),
           const _Heading('PRIVACY'),
           const _Link(label: 'Privacy policy', url: 'https://atguru.github.io/omniplayer-privacy/'),
+          const _Heading('LICENSES'),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () => showLicensePage(
+                context: context,
+                applicationName: 'OmniPlayer',
+                applicationLegalese: 'Copyright (c) 2026 Guru Morgan, AllTechGuru. All rights reserved.',
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'Font and software licenses',
+                style: OmniPlayerTextStyles.rajdhaniSemi.copyWith(color: OmniPlayerColors.cyan, fontSize: 16),
+              ),
+            ),
+          ),
         ],
       ),
     );

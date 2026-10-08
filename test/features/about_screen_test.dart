@@ -14,5 +14,7 @@ void main() {
     expect(find.text('The Frequency'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Privacy policy'), 200);
     expect(find.text('Privacy policy'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Font and software licenses'), 200);
+    expect(find.text('Font and software licenses'), findsOneWidget);
   });
 }

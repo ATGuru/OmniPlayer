@@ -28,4 +28,4 @@ Third-party material in this repository keeps its own license:
 
 - packages/just_audio_mpv is MIT, copyright 2022 Blake Leonard and the project contributors.
 - packages/mpv_dart is MIT, copyright 2022 Kingkor Roy Tirtho.
-- The font files in assets/fonts (Orbitron and Rajdhani) remain under the SIL Open Font License.
+- The font files in assets/fonts are Orbitron and Rajdhani, under the SIL Open Font License 1.1. See assets/fonts/OFL-Orbitron.txt and assets/fonts/OFL-Rajdhani.txt.

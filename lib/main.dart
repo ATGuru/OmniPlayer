@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:audio_service/audio_service.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/theme/font_licenses.dart';
 import 'core/audio/audio_handler.dart';
 import 'features/player/screens/player_screen.dart';
 
@@ -13,6 +14,7 @@ late AudioHandler globalAudioHandler;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerFontLicenses();
 
   // Lock to portrait — player looks best vertical
   await SystemChrome.setPreferredOrientations([
