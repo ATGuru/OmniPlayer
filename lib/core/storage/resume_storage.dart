@@ -4,8 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 class ResumeStorage {
+  /// Tests point this at a temporary directory. The app leaves it null and
+  /// uses the platform support directory.
+  @visibleForTesting
+  static Directory? directoryOverride;
+
   static Future<File> _file() async {
-    final dir = await getApplicationSupportDirectory();
+    final dir = directoryOverride ?? await getApplicationSupportDirectory();
     return File('${dir.path}/resume.json');
   }
 

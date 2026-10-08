@@ -60,7 +60,11 @@ Future<void> main() async {
 }
 
 class OmniPlayerApp extends StatelessWidget {
-  const OmniPlayerApp({super.key});
+  const OmniPlayerApp({super.key, this.home});
+
+  /// Shell-only tests pass a stand-in here. The running app leaves it null
+  /// and shows the player.
+  final Widget? home;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +72,7 @@ class OmniPlayerApp extends StatelessWidget {
       title: 'OmniPlayer',
       debugShowCheckedModeBanner: false,
       theme: OmniPlayerTheme.dark(),
-      home: const _HudShell(child: PlayerScreen()),
+      home: home ?? const _HudShell(child: PlayerScreen()),
     );
   }
 }
