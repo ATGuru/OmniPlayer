@@ -1,6 +1,8 @@
 # OmniPlayer — Flutter Project Structure
 ## AllTechGuru · Holographic Cyberpunk MP3 Player
 
+Public for review. All other rights reserved. See [LICENSE](LICENSE).
+
 ---
 
 ## 📁 Directory Map

@@ -1,0 +1,31 @@
+OmniPlayer
+Copyright (c) 2026 Guru Morgan, AllTechGuru. All rights reserved.
+
+This repository is public so the source code can be read and reviewed.
+Review is the only permission granted.
+
+Without prior written permission from Guru Morgan (guru_morgan@atguru.xyz),
+you may not:
+
+- use this software, or any part of it, in your own app, service, or project
+- modify it and share the result
+- publish or redistribute copies of it
+- sell it, or include it in a product, whether that product is paid or free
+
+Cloning the repository in order to review it is allowed. Running a private
+review copy for that purpose is allowed. Shipping it, forking it into another
+product, or reusing pieces of it is not.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Third-party material in this repository keeps its own license:
+
+- packages/just_audio_mpv is MIT, copyright 2022 Blake Leonard and the project contributors.
+- packages/mpv_dart is MIT, copyright 2022 Kingkor Roy Tirtho.
+- The font files in assets/fonts (Orbitron and Rajdhani) remain under the SIL Open Font License.
